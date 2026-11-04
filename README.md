@@ -12,19 +12,22 @@ performance trend is based on.
 
 | | Count | Why |
 |---|---|---|
-| Workflows | 8 (`perf-01` … `perf-08`) | |
+| Workflows | 5 (`perf-01` … `perf-05`) | |
 | Runs per workflow | 12 | The CI Panel loads only the latest 12 runs per workflow |
-| Jobs per run | 30 (matrix `shard-1` … `shard-30`) | |
-| Steps per job | 4: Set up job, Run shard, Upload artifact, Complete job | GitHub adds the first and last |
+| Jobs per run | 15 (matrix `shard-1` … `shard-15`) | |
+| Steps per job | 10: Set up job, Check out, Set up MATLAB, Install dependencies, Build, Run tests, Generate test report, Package, Upload artifact, Complete job | Shaped like a MATLAB CI job; the steps only echo. GitHub adds the first and last |
 | Artifacts per job | 1 (`shard-<n>`), `retention-days: 1` | They expire one day after setup, then the repo never changes again |
 
-As the CI Panel loads it: 8 + 96 runs + 2,880 jobs + 11,520 steps ≈
-**14,500 tree nodes**, from 1 + 8 + 2·96 = **201 REST requests** per load.
+As the CI Panel loads it: 5 + 60 runs + 900 jobs + 9,000 steps ≈
+**9,965 tree nodes**, from 1 + 5 + 2·60 = **126 REST requests** per load.
+(Resized on 2026-11-03 from 8 × 12 × 30 × 4 steps, which took too long to
+load.)
 
-**Outcomes are deterministic.** `perf-01` … `perf-06` always pass.
-`perf-07` and `perf-08` always fail `shard-30` (all other shards pass), so
-every run of those workflows ends with *failure*. `fail-fast: false` keeps a
-failing shard from cancelling the others.
+**Outcomes are deterministic.** `perf-01` … `perf-04` always pass.
+`perf-05` always fails the "Run tests" step of `shard-15` (all other shards
+pass), so every run of `perf-05` ends with *failure*. `fail-fast: false`
+keeps a failing shard from cancelling the others, and the steps after "Run
+tests" use `if: always()` so every job keeps all 10 steps.
 
 ## Why it's built this way
 
@@ -45,25 +48,32 @@ as `mw-ci-test` (`gh auth login --hostname github.com`), and `jq`.
 
 1. Push this content to `main`. Workflows must be on the default branch
    before they can be dispatched.
-2. Create the runs (96 dispatches, about 5 minutes; safe to re-run, since it
+2. Create the runs (60 dispatches, about 3 minutes; safe to re-run, since it
    only adds missing runs):
    ```bash
    scripts/dispatch-runs.sh
    ```
-3. Wait until all 96 runs have finished. The Free plan runs 20 jobs at a
+3. Wait until all 60 runs have finished. The Free plan runs 20 jobs at a
    time, and each job takes about 20–40 s including runner setup, so the
-   2,880 jobs take roughly **1–1.5 hours** (up to about 2 hours if runners
-   are slow to pick up jobs). Minutes are free and unlimited for public repos.
+   900 jobs take roughly **20–30 minutes** (longer if runners are slow to
+   pick up jobs). Minutes are free and unlimited for public repos.
 
-   To avoid 24 failure emails (`perf-07`/`perf-08` fail by design), turn off
+   To avoid 12 failure emails (`perf-05` fails by design), turn off
    email for Actions under **Settings → Notifications → System → Actions**
    for `mw-ci-test` before dispatching.
 4. Check the shape (read-only):
    ```bash
    scripts/verify.sh
    ```
-   Expected: 8 workflows, each with 12 completed runs, 30 jobs per run and
-   4 steps per job. Artifacts read 30 per run until they expire, then 0.
+   Expected: 5 workflows, each with 12 completed runs, 15 jobs per run and
+   10 steps per job. Artifacts read 15 per run until they expire, then 0.
+
+**To rebuild the data from scratch** (e.g. after changing the shape):
+delete every run with `scripts/delete-runs.sh` (cancels runs still in
+progress, asks before deleting, cannot be undone), push the new workflows,
+check that `gh api repos/mw-ci-test/ci-panel-perf-large-gha/actions/workflows`
+lists only the current workflows (removed workflow files disappear once their
+runs are gone), then run steps 2–4 again.
 
 If a run fails for an unexpected reason (e.g. a runner outage), **don't
 re-run it**: a re-run adds an attempt and changes the data. Delete the bad

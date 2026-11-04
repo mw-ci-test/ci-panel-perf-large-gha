@@ -10,7 +10,7 @@ set -euo pipefail
 
 REPO="${REPO:-mw-ci-test/ci-panel-perf-large-gha}"
 RUNS_PER_WORKFLOW="${RUNS_PER_WORKFLOW:-12}"
-WORKFLOWS=(perf-01.yml perf-02.yml perf-03.yml perf-04.yml perf-05.yml perf-06.yml perf-07.yml perf-08.yml)
+WORKFLOWS=(perf-01.yml perf-02.yml perf-03.yml perf-04.yml perf-05.yml)
 export GH_HOST=github.com
 
 run_count() {

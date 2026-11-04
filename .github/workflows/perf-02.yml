@@ -1,4 +1,4 @@
-# CI Panel performance test data: workflow 02 of 8.
+# CI Panel performance test data: workflow 02 of 5.
 # Frozen data. Do not add push/pull_request/schedule triggers or re-run jobs.
 # See README.md before changing anything.
 name: Perf Workflow 02
@@ -14,19 +14,35 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        shard: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30]
+        shard: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
+    # 8 steps here + GitHub's "Set up job" and "Complete job" = 10 steps per job.
+    # Steps after "Run tests" use if: always() so every job keeps all 10 steps.
     steps:
-      - name: Run shard
-        env:
-          # Workflows 07 and 08 fail shard 30 on every run; all other shards pass.
-          FAIL_LAST_SHARD: 'false'
+      - name: Check out
+        run: echo "Check out (simulated)"
+      - name: Set up MATLAB
+        run: echo "Set up MATLAB (simulated)"
+      - name: Install dependencies
+        run: echo "Install dependencies (simulated)"
+      - name: Build
         run: |
           mkdir -p out
           echo "workflow=02 shard=${{ matrix.shard }} run=${{ github.run_number }}" > out/result.txt
-          if [ "$FAIL_LAST_SHARD" = "true" ] && [ "${{ matrix.shard }}" = "30" ]; then
-            echo "Shard 30 fails by design."
+      - name: Run tests
+        env:
+          # Workflow 05 fails shard 15 on every run; all other shards pass.
+          FAIL_LAST_SHARD: 'false'
+        run: |
+          if [ "$FAIL_LAST_SHARD" = "true" ] && [ "${{ matrix.shard }}" = "15" ]; then
+            echo "Shard 15 fails by design."
             exit 1
           fi
+      - name: Generate test report
+        if: always()
+        run: echo "Generate test report (simulated)"
+      - name: Package
+        if: always()
+        run: echo "Package (simulated)"
       - name: Upload artifact
         if: always()
         uses: actions/upload-artifact@v4

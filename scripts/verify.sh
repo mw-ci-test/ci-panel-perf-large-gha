@@ -9,10 +9,10 @@ set -uo pipefail
 REPO="${REPO:-mw-ci-test/ci-panel-perf-large-gha}"
 export GH_HOST=github.com
 
-EXPECTED_WORKFLOWS=8
+EXPECTED_WORKFLOWS=5
 EXPECTED_RUNS=12        # the CI Panel loads only the latest 12 runs per workflow
-EXPECTED_JOBS=30
-EXPECTED_STEPS=4        # Set up job, Run shard, Upload artifact, Complete job
+EXPECTED_JOBS=15
+EXPECTED_STEPS=10       # Set up job, 8 workflow steps, Complete job
 
 status=0
 fail() { echo "  MISMATCH: $*"; status=1; }
@@ -21,7 +21,7 @@ workflows=$(gh api "repos/$REPO/actions/workflows" --jq '.total_count')
 echo "workflows: $workflows (expected $EXPECTED_WORKFLOWS)"
 (( workflows == EXPECTED_WORKFLOWS )) || fail "workflow count"
 
-for wf in perf-01.yml perf-02.yml perf-03.yml perf-04.yml perf-05.yml perf-06.yml perf-07.yml perf-08.yml; do
+for wf in perf-01.yml perf-02.yml perf-03.yml perf-04.yml perf-05.yml; do
     runs_json=$(gh api "repos/$REPO/actions/workflows/$wf/runs?per_page=$EXPECTED_RUNS")
     total=$(jq '.total_count' <<<"$runs_json")
     not_done=$(jq '[.workflow_runs[] | select(.status != "completed")] | length' <<<"$runs_json")
